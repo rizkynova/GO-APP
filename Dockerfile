@@ -1,50 +1,51 @@
-# Simple Go application Dockerfile
-FROM golang:1.23-alpine AS builder
-
-# Install git and ca-certificates
-RUN apk add --no-cache git ca-certificates
+# Stage 1: Build stage
+FROM golang:1.21-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy source code first
+# Install git (needed for go mod download)
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
 COPY . .
 
-# Download and tidy dependencies
-RUN go mod download
-RUN go mod tidy
-
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o go-app .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-# Final stage
+# Stage 2: Final stage
 FROM alpine:latest
 
 # Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates tzdata
 
-# Create non-root user
+# Create non-root user for security
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-# Set working directory
-WORKDIR /app
+WORKDIR /root/
 
-# Copy binary from builder stage
-COPY --from=builder /app/go-app .
+# Copy the binary from builder stage
+COPY --from=builder /app/main .
 
 # Change ownership to non-root user
-RUN chown appuser:appgroup /app/go-app
+RUN chown appuser:appgroup /root/main
 
 # Switch to non-root user
 USER appuser
 
-# Expose port
+# Expose port 8080
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
 # Run the application
-CMD ["./go-app"] 
+CMD ["./main"]
