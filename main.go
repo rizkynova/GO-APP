@@ -17,10 +17,10 @@ type PageData struct {
 func main() {
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/api/health", healthHandler)
-	
+
 	log.Println("🚀 Server starting on port 8080...")
 	log.Println("🌐 Visit: http://localhost:8080")
-	
+
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal("Server failed to start:", err)
 	}
@@ -33,7 +33,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		CurrentTime: time.Now().Format("15:04:05, 2 January 2006"),
 		Version:     "1.0.0",
 	}
-	
+
 	tmpl := `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -301,13 +301,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
     </div>
 </body>
 </html>`
-	
+
 	t, err := template.New("home").Parse(tmpl)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	t.Execute(w, data)
 }
